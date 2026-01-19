@@ -1,21 +1,21 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str = Field(min_length=3, max_length=255)
     password: str = Field(min_length=6)
 
 
 class UserCreate(BaseModel):
-    email: EmailStr
-    name: str
+    email: str = Field(min_length=3, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
     password: str = Field(min_length=6)
     role: str = Field(default="user")
 
 
 class UserOut(BaseModel):
     id: int
-    email: EmailStr
+    email: str
     name: str
     role: str
 
@@ -28,7 +28,7 @@ class TokenResponse(BaseModel):
 
 class PresenceUser(BaseModel):
     id: int
-    email: EmailStr
+    email: str
     name: str
     role: str
     connected_at: str

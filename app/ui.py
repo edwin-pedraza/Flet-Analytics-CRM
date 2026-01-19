@@ -22,10 +22,40 @@ def main(page: ft.Page, api_url: str) -> None:
     connected_count = ft.Text("Connected: 0")
 
     login_email = ft.TextField(label="Email", width=320)
-    login_password = ft.TextField(label="Password", password=True, can_reveal_password=True, width=320)
+    login_password = ft.TextField(
+        label="Password",
+        password=True,
+        can_reveal_password=True,
+        width=320,
+    )
     login_btn = ft.ElevatedButton("Login")
     logout_btn = ft.ElevatedButton("Logout", disabled=True)
 
+    create_email = ft.TextField(label="New user email", width=260)
+    create_name = ft.TextField(label="Name", width=220)
+    create_password = ft.TextField(
+        label="Password",
+        password=True,
+        can_reveal_password=True,
+        width=220,
+    )
+    create_role = ft.Dropdown(
+        label="Role",
+        options=[ft.dropdown.Option("user"), ft.dropdown.Option("admin")],
+        value="user",
+        width=160,
+    )
+    create_btn = ft.ElevatedButton("Create user", disabled=True)
+    admin_section = ft.Column(
+        [
+            ft.Text("Create User", size=16, weight=ft.FontWeight.BOLD),
+            ft.Row(
+                [create_email, create_name, create_password, create_role, create_btn],
+                spacing=10,
+            ),
+        ],
+        visible=False,
+    )
     async def add_log(message: str) -> None:
         timestamp = ft.Text(value=time.strftime("%H:%M:%S"), size=12)
         log_view.controls.append(ft.Row([timestamp, ft.Text(message)], spacing=8))
@@ -71,6 +101,9 @@ def main(page: ft.Page, api_url: str) -> None:
         login_btn.disabled = True
         login_email.disabled = True
         login_password.disabled = True
+        is_admin = user.get("role") == "admin"
+        admin_section.visible = is_admin
+        create_btn.disabled = not is_admin
         page.update()
 
         await add_log("Login successful.")
@@ -102,6 +135,34 @@ def main(page: ft.Page, api_url: str) -> None:
 
     login_btn.on_click = lambda e: page.run_task(login_async, e)
     logout_btn.on_click = lambda e: page.run_task(logout_async, e)
+        admin_section.visible = False
+        create_btn.disabled = True
+        await add_log("Logged out.")
+        page.update()
+
+    async def create_user_async(_: ft.ControlEvent | None = None) -> None:
+        email = create_email.value.strip()
+        name = create_name.value.strip()
+        password = create_password.value
+        role = create_role.value or "user"
+        if not email or not name or not password:
+            await add_log("New user email, name, and password are required.")
+            return
+        try:
+            created = await api_client.create_user(email, name, password, role)
+        except Exception as exc:
+            await add_log(f"Create user failed: {exc}")
+            return
+        create_email.value = ""
+        create_name.value = ""
+        create_password.value = ""
+        create_role.value = "user"
+        await add_log(f"User created: {created.get('email')}")
+        page.update()
+
+    login_btn.on_click = lambda e: page.run_task(login_async, e)
+    logout_btn.on_click = lambda e: page.run_task(logout_async, e)
+    create_btn.on_click = lambda e: page.run_task(create_user_async, e)
 
     async def cleanup_async() -> None:
         nonlocal presence_client
@@ -124,6 +185,7 @@ def main(page: ft.Page, api_url: str) -> None:
         ft.Divider(),
         ft.Text("Login", size=16, weight=ft.FontWeight.BOLD),
         ft.Row([login_email, login_password, login_btn], spacing=10),
+        admin_section,
         ft.Divider(),
         ft.Text("Connected Users", size=16, weight=ft.FontWeight.BOLD),
         connected_count,

@@ -13,6 +13,19 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.29",
     "asyncpg>=0.29.0",
     "passlib[bcrypt]>=1.7.4",
+    "bcrypt<4",
     "python-jose[cryptography]>=3.3.0",
     "pydantic-settings>=2.2.1",
+    "pydantic[email]>=2.0.0",
 ]
+
+[project.scripts]
+api = "backend.cli:run_api"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend", "backend.*", "app", "app.*"]

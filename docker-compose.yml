@@ -9,6 +9,11 @@ services:
       - db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crm"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   api:
     build:
@@ -19,9 +24,19 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/crm
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import httpx; httpx.get('http://127.0.0.1:8000/health', timeout=2)\"",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   web:
     build:
@@ -31,7 +46,8 @@ services:
       API_URL: http://api:8000
       OPEN_BROWSER: "0"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "8550:8550"
 

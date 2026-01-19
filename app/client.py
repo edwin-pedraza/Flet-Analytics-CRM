@@ -23,6 +23,10 @@ class ApiClient:
     def set_token(self, token: str) -> None:
         self._token = token
 
+    def _auth_headers(self) -> dict[str, str]:
+        if not self._token:
+            return {}
+        return {"Authorization": f"Bearer {self._token}"}
     async def login(self, email: str, password: str) -> dict:
         response = await self._client.post(
             f"{self.base_url}/auth/login",
@@ -33,6 +37,14 @@ class ApiClient:
         self._token = data.get("access_token")
         return data
 
+    async def create_user(self, email: str, name: str, password: str, role: str) -> dict:
+        response = await self._client.post(
+            f"{self.base_url}/users",
+            json={"email": email, "name": name, "password": password, "role": role},
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
     async def close(self) -> None:
         await self._client.aclose()
 
