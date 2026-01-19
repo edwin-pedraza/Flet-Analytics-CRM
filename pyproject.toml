@@ -1,0 +1,18 @@
+[project]
+name = "crm-analytics"
+version = "0.1.0"
+description = "Internal CRM analytics with presence and login"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "flet[all]>=0.80.1",
+    "httpx>=0.27.0",
+    "websockets>=16.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "sqlalchemy[asyncio]>=2.0.29",
+    "asyncpg>=0.29.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-jose[cryptography]>=3.3.0",
+    "pydantic-settings>=2.2.1",
+]
