@@ -183,6 +183,23 @@ class UIComponents:
             expand=expand,
         )
 
+    @staticmethod
+    def create_kpi_card(title: str, value_text: ft.Text) -> ft.Container:
+        return ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(title, size=12, color=Theme.TEXT_SECONDARY),
+                    value_text,
+                ],
+                spacing=6,
+            ),
+            padding=16,
+            border_radius=14,
+            bgcolor="#1B1030",
+            border=ft.border.all(1, Theme.BORDER),
+            width=200,
+        )
+
 
 class CRMAnalyticsUI:
     def __init__(self, page: ft.Page, api_url: str):
@@ -195,6 +212,10 @@ class CRMAnalyticsUI:
 
         self.current_state = UIState.IDLE
         self.current_user = None
+        self.clients: list[dict] = []
+        self.files: list[dict] = []
+        self.reports: list[dict] = []
+        self.selected_client_id: Optional[int] = None
 
         self._setup_page()
         self._create_widgets()
@@ -204,7 +225,7 @@ class CRMAnalyticsUI:
         self.page.title = "CRM Analytics (LAN)"
         self.page.padding = 0
         self.page.spacing = 0
-        self.page.scroll = "adaptive"
+        self.page.scroll = None
         self.page.fonts = {
             "Sora": "https://fonts.gstatic.com/s/sora/v13/xMQbuFFYT72X1hY7vwbmrA.woff2",
             "IBM": "https://fonts.gstatic.com/s/ibmplexsans/v14/zYX-KVElMYYaJe8bpLHnCwDKhdzI.woff2",
@@ -244,6 +265,174 @@ class CRMAnalyticsUI:
             disabled=True,
         )
 
+        self.client_dropdown = ft.Dropdown(
+            label="Client",
+            options=[],
+            value=None,
+            width=260,
+            border_color=Theme.FIELD_BORDER,
+            focused_border_color="#7DD3FC",
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+        )
+        self.client_dropdown.on_change = lambda e: self.page.run_task(
+            self._on_client_change_async, e
+        )
+        self.refresh_dashboard_btn = UIComponents.create_button(
+            "Refresh",
+            on_click=lambda e: self.page.run_task(self._refresh_dashboard_async, e),
+            primary=False,
+            width=120,
+            disabled=True,
+        )
+
+        self.total_revenue_value = ft.Text(
+            "-",
+            size=22,
+            weight=ft.FontWeight.BOLD,
+            color=Theme.TEXT_PRIMARY,
+        )
+        self.total_transactions_value = ft.Text(
+            "-",
+            size=22,
+            weight=ft.FontWeight.BOLD,
+            color=Theme.TEXT_PRIMARY,
+        )
+        self.revenue_today_value = ft.Text(
+            "-",
+            size=22,
+            weight=ft.FontWeight.BOLD,
+            color=Theme.TEXT_PRIMARY,
+        )
+
+        self.metrics_row = ft.Row(
+            [
+                UIComponents.create_kpi_card("Total Revenue", self.total_revenue_value),
+                UIComponents.create_kpi_card("Transactions", self.total_transactions_value),
+                UIComponents.create_kpi_card("Revenue Today", self.revenue_today_value),
+            ],
+            spacing=12,
+            wrap=True,
+        )
+        self.data_sources_list = ft.ListView(expand=True, spacing=6)
+        self.revenue_by_product_list = ft.ListView(expand=True, spacing=6)
+        self.revenue_by_date_list = ft.ListView(expand=True, spacing=6)
+
+        self.metrics_card = UIComponents.create_card(
+            "Key Metrics",
+            self.metrics_row,
+            min_height=160,
+        )
+        self.sources_card = UIComponents.create_card(
+            "Data Sources",
+            self.data_sources_list,
+            min_height=240,
+        )
+        self.products_card = UIComponents.create_card(
+            "Top Products",
+            self.revenue_by_product_list,
+            min_height=240,
+        )
+        self.dates_card = UIComponents.create_card(
+            "Revenue by Date",
+            self.revenue_by_date_list,
+            min_height=240,
+        )
+
+        self.report_name = UIComponents.create_text_field("Report name", width=200)
+        self.report_days = UIComponents.create_text_field("Last N days", width=120)
+        self.report_days.value = "7"
+        self.report_group_by = ft.Dropdown(
+            label="Group by",
+            options=[
+                ft.dropdown.Option("product", "Product"),
+                ft.dropdown.Option("region", "Region"),
+                ft.dropdown.Option("salesperson", "Salesperson"),
+                ft.dropdown.Option("date", "Date"),
+            ],
+            value="product",
+            width=160,
+            border_color=Theme.FIELD_BORDER,
+            focused_border_color="#7DD3FC",
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+        )
+        self.report_metric = ft.Dropdown(
+            label="Metric",
+            options=[
+                ft.dropdown.Option("revenue_sum", "Revenue Sum"),
+                ft.dropdown.Option("quantity_sum", "Quantity Sum"),
+                ft.dropdown.Option("rows_count", "Row Count"),
+            ],
+            value="revenue_sum",
+            width=160,
+            border_color=Theme.FIELD_BORDER,
+            focused_border_color="#7DD3FC",
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+        )
+        self.report_file_dropdown = ft.Dropdown(
+            label="Data source",
+            options=[],
+            value=None,
+            width=220,
+            border_color=Theme.FIELD_BORDER,
+            focused_border_color="#7DD3FC",
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+        )
+        self.report_create_btn = UIComponents.create_button(
+            "Create report",
+            on_click=lambda e: self.page.run_task(self._create_report_async, e),
+            primary=False,
+            width=140,
+            disabled=True,
+        )
+        self.report_select = ft.Dropdown(
+            label="Saved reports",
+            options=[],
+            value=None,
+            width=280,
+            border_color=Theme.FIELD_BORDER,
+            focused_border_color="#7DD3FC",
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+        )
+        self.report_run_btn = UIComponents.create_button(
+            "Run report",
+            on_click=lambda e: self.page.run_task(self._run_report_async, e),
+            primary=False,
+            width=120,
+            disabled=True,
+        )
+        self.report_results_list = ft.ListView(expand=True, spacing=6)
+
+        self.reports_card = UIComponents.create_card(
+            "Reports",
+            ft.Column(
+                [
+                    ft.Row(
+                        [
+                            self.report_file_dropdown,
+                            self.report_name,
+                            self.report_days,
+                            self.report_group_by,
+                            self.report_metric,
+                            self.report_create_btn,
+                        ],
+                        spacing=10,
+                        wrap=True,
+                    ),
+                    ft.Row(
+                        [
+                            self.report_select,
+                            self.report_run_btn,
+                        ],
+                        spacing=10,
+                        wrap=True,
+                    ),
+                    self.report_results_list,
+                ],
+                spacing=12,
+            ),
+            min_height=300,
+        )
+
         self.create_email = UIComponents.create_text_field(
             "New user email",
             width=240,
@@ -277,25 +466,150 @@ class CRMAnalyticsUI:
             disabled=True,
         )
 
+        self.client_name = UIComponents.create_text_field(
+            "Client name",
+            width=220,
+        )
+        self.client_code = UIComponents.create_text_field(
+            "Client code",
+            width=160,
+        )
+        self.client_description = UIComponents.create_text_field(
+            "Description",
+            width=260,
+        )
+        self.client_create_btn = UIComponents.create_button(
+            "Create client",
+            on_click=lambda e: self.page.run_task(self._create_client_async, e),
+            primary=False,
+            width=140,
+            disabled=True,
+        )
+
+        self.assign_user_email = UIComponents.create_text_field(
+            "User email",
+            width=220,
+        )
+        self.assign_btn = UIComponents.create_button(
+            "Assign to client",
+            on_click=lambda e: self.page.run_task(self._assign_user_async, e),
+            primary=False,
+            width=150,
+            disabled=True,
+        )
+
+        self.file_display_name = UIComponents.create_text_field(
+            "File name",
+            width=200,
+        )
+        self.file_path = UIComponents.create_text_field(
+            "File path",
+            width=260,
+        )
+        self.file_sheet = UIComponents.create_text_field(
+            "Sheet (optional)",
+            width=160,
+        )
+        self.file_has_header = ft.Checkbox(
+            label="Has header row",
+            value=True,
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+        )
+        self.map_date = UIComponents.create_text_field("Date column", width=140)
+        self.map_product = UIComponents.create_text_field("Product column", width=140)
+        self.map_quantity = UIComponents.create_text_field("Quantity column", width=140)
+        self.map_revenue = UIComponents.create_text_field("Revenue column", width=140)
+        self.map_region = UIComponents.create_text_field("Region column", width=140)
+        self.map_salesperson = UIComponents.create_text_field("Salesperson column", width=160)
+        self.map_date.value = "A"
+        self.map_product.value = "B"
+        self.map_quantity.value = "C"
+        self.map_revenue.value = "D"
+        self.map_region.value = "E"
+        self.map_salesperson.value = "F"
+        self.file_register_btn = UIComponents.create_button(
+            "Register file",
+            on_click=lambda e: self.page.run_task(self._register_file_async, e),
+            primary=False,
+            width=140,
+            disabled=True,
+        )
+
         self.admin_section = ft.Container(
             content=ft.Column(
                 [
-                    ft.Text(
+                    UIComponents.create_card(
                         "Create User",
-                        size=18,
-                        weight=ft.FontWeight.BOLD,
-                        color=Theme.TEXT_PRIMARY,
+                        ft.Row(
+                            [
+                                self.create_email,
+                                self.create_name,
+                                self.create_password,
+                                self.create_role,
+                                self.create_btn,
+                            ],
+                            spacing=10,
+                            wrap=True,
+                        ),
+                        min_height=160,
                     ),
-                    ft.Row(
-                        [
-                            self.create_email,
-                            self.create_name,
-                            self.create_password,
-                            self.create_role,
-                            self.create_btn,
-                        ],
-                        spacing=10,
-                        wrap=True,
+                    UIComponents.create_card(
+                        "Create Client",
+                        ft.Row(
+                            [
+                                self.client_name,
+                                self.client_code,
+                                self.client_description,
+                                self.client_create_btn,
+                            ],
+                            spacing=10,
+                            wrap=True,
+                        ),
+                        min_height=160,
+                    ),
+                    UIComponents.create_card(
+                        "Assign User to Client",
+                        ft.Row(
+                            [
+                                self.assign_user_email,
+                                self.assign_btn,
+                            ],
+                            spacing=10,
+                            wrap=True,
+                        ),
+                        min_height=140,
+                    ),
+                    UIComponents.create_card(
+                        "Register Excel File",
+                        ft.Column(
+                            [
+                                ft.Row(
+                                    [
+                                        self.file_display_name,
+                                        self.file_path,
+                                        self.file_sheet,
+                                        self.file_has_header,
+                                        self.file_register_btn,
+                                    ],
+                                    spacing=10,
+                                    wrap=True,
+                                ),
+                                ft.Row(
+                                    [
+                                        self.map_date,
+                                        self.map_product,
+                                        self.map_quantity,
+                                        self.map_revenue,
+                                        self.map_region,
+                                        self.map_salesperson,
+                                    ],
+                                    spacing=10,
+                                    wrap=True,
+                                ),
+                            ],
+                            spacing=10,
+                        ),
+                        min_height=200,
                     ),
                 ],
                 spacing=12,
@@ -394,10 +708,37 @@ class CRMAnalyticsUI:
             padding=ft.padding.only(bottom=8),
         )
 
+        client_bar = ft.Container(
+            content=ft.Row(
+                [
+                    self.client_dropdown,
+                    self.refresh_dashboard_btn,
+                    ft.Container(expand=True),
+                ],
+                spacing=12,
+            ),
+            padding=ft.padding.only(bottom=4),
+        )
+
+        dashboard_section = ft.Column(
+            [
+                client_bar,
+                self.metrics_card,
+                ft.Row(
+                    [self.sources_card, self.products_card, self.dates_card],
+                    spacing=16,
+                    wrap=True,
+                ),
+            ],
+            spacing=16,
+        )
+
         self.app_layer = ft.Container(
             content=ft.Column(
                 [
                     status_bar,
+                    dashboard_section,
+                    self.reports_card,
                     self.admin_section,
                     ft.Row(
                         [self.users_card, self.logs_card],
@@ -513,6 +854,362 @@ class CRMAnalyticsUI:
         self.notification.show("Connection to presence server lost", "error")
         self.page.update()
 
+    async def _load_clients_async(self) -> None:
+        try:
+            if self.current_user and self.current_user.get("role") == "admin":
+                clients = await self.api_client.list_clients()
+            else:
+                clients = await self.api_client.list_my_clients()
+        except Exception as exc:
+            await self._add_log(f"Failed to load clients: {exc}", "error")
+            self.notification.show("Failed to load clients", "error")
+            return
+
+        self.clients = clients
+        self.client_dropdown.options = [
+            ft.dropdown.Option(str(client["id"]), client["name"]) for client in clients
+        ]
+
+        if clients:
+            self.client_dropdown.value = str(clients[0]["id"])
+            self.selected_client_id = clients[0]["id"]
+            self.refresh_dashboard_btn.disabled = False
+            await self._load_files_async()
+            await self._load_reports_async()
+            await self._refresh_dashboard_async()
+        else:
+            self.client_dropdown.value = None
+            self.selected_client_id = None
+            self.refresh_dashboard_btn.disabled = True
+            self.files = []
+            self.reports = []
+            self.report_file_dropdown.options = []
+            self.report_select.options = []
+            self.report_create_btn.disabled = True
+            self.report_run_btn.disabled = True
+        self.page.update()
+
+    async def _on_client_change_async(self, _: ft.ControlEvent | None = None) -> None:
+        if not self.client_dropdown.value:
+            self.selected_client_id = None
+            return
+        try:
+            self.selected_client_id = int(self.client_dropdown.value)
+        except ValueError:
+            self.selected_client_id = None
+            return
+        await self._load_files_async()
+        await self._load_reports_async()
+        await self._refresh_dashboard_async()
+
+    async def _load_files_async(self) -> None:
+        if not self.selected_client_id:
+            return
+        try:
+            files = await self.api_client.list_files(self.selected_client_id)
+        except Exception as exc:
+            await self._add_log(f"Failed to load files: {exc}", "error")
+            self.notification.show("Failed to load files", "error")
+            return
+        self.files = files
+        self.report_file_dropdown.options = [
+            ft.dropdown.Option(str(file_row["id"]), file_row["display_name"])
+            for file_row in files
+        ]
+        if files:
+            self.report_file_dropdown.value = str(files[0]["id"])
+            self.report_create_btn.disabled = False
+        else:
+            self.report_file_dropdown.value = None
+            self.report_create_btn.disabled = True
+        self.page.update()
+
+    async def _load_reports_async(self) -> None:
+        if not self.selected_client_id:
+            return
+        try:
+            reports = await self.api_client.list_reports(self.selected_client_id)
+        except Exception as exc:
+            await self._add_log(f"Failed to load reports: {exc}", "error")
+            self.notification.show("Failed to load reports", "error")
+            return
+        self.reports = reports
+        self.report_select.options = [
+            ft.dropdown.Option(str(report["id"]), report["name"]) for report in reports
+        ]
+        self.report_results_list.controls = []
+        if reports:
+            self.report_select.value = str(reports[0]["id"])
+            self.report_run_btn.disabled = False
+        else:
+            self.report_select.value = None
+            self.report_run_btn.disabled = True
+        self.page.update()
+
+    async def _refresh_dashboard_async(self, _: ft.ControlEvent | None = None) -> None:
+        if not self.selected_client_id:
+            return
+        try:
+            dashboard = await self.api_client.get_dashboard(self.selected_client_id)
+        except Exception as exc:
+            await self._add_log(f"Failed to load dashboard: {exc}", "error")
+            self.notification.show("Failed to load dashboard", "error")
+            return
+
+        total_revenue = float(dashboard.get("total_revenue") or 0)
+        revenue_today = float(dashboard.get("revenue_today") or 0)
+        total_transactions = int(dashboard.get("total_transactions") or 0)
+        self.total_revenue_value.value = f"${total_revenue:,.2f}"
+        self.total_transactions_value.value = str(total_transactions)
+        self.revenue_today_value.value = f"${revenue_today:,.2f}"
+
+        self.data_sources_list.controls = []
+        for source in dashboard.get("data_sources", []):
+            self.data_sources_list.controls.append(
+                ft.Row(
+                    [
+                        ft.Text(
+                            source.get("display_name", "-"),
+                            color=Theme.TEXT_PRIMARY,
+                            size=12,
+                        ),
+                        ft.Container(expand=True),
+                        ft.Text(
+                            f"{source.get('row_count', 0)} rows",
+                            color=Theme.TEXT_SECONDARY,
+                            size=11,
+                        ),
+                    ],
+                    spacing=10,
+                )
+            )
+
+        self.revenue_by_product_list.controls = []
+        for item in dashboard.get("revenue_by_product", []):
+            value = float(item.get("value") or 0)
+            self.revenue_by_product_list.controls.append(
+                ft.Row(
+                    [
+                        ft.Text(item.get("label", "-"), color=Theme.TEXT_PRIMARY, size=12),
+                        ft.Container(expand=True),
+                        ft.Text(
+                            f"${value:,.2f}",
+                            color=Theme.TEXT_SECONDARY,
+                            size=11,
+                        ),
+                    ],
+                    spacing=10,
+                )
+            )
+
+        self.revenue_by_date_list.controls = []
+        for item in dashboard.get("revenue_by_date", [])[-10:]:
+            value = float(item.get("value") or 0)
+            self.revenue_by_date_list.controls.append(
+                ft.Row(
+                    [
+                        ft.Text(item.get("label", "-"), color=Theme.TEXT_PRIMARY, size=12),
+                        ft.Container(expand=True),
+                        ft.Text(
+                            f"${value:,.2f}",
+                            color=Theme.TEXT_SECONDARY,
+                            size=11,
+                        ),
+                    ],
+                    spacing=10,
+                )
+            )
+        self.page.update()
+
+    async def _create_client_async(self, _: ft.ControlEvent | None = None) -> None:
+        name = (self.client_name.value or "").strip()
+        code = (self.client_code.value or "").strip()
+        description = (self.client_description.value or "").strip() or None
+
+        if not name or not code:
+            self.notification.show("Client name and code are required", "warning")
+            return
+        try:
+            self.client_create_btn.disabled = True
+            self.page.update()
+            created = await self.api_client.create_client(name, code, description)
+            self.client_name.value = ""
+            self.client_code.value = ""
+            self.client_description.value = ""
+            await self._add_log(f"Client created: {created.get('name')}", "success")
+            self.notification.show("Client created", "success")
+            await self._load_clients_async()
+        except Exception as exc:
+            await self._add_log(f"Client creation failed: {exc}", "error")
+            self.notification.show("Failed to create client", "error")
+        finally:
+            self.client_create_btn.disabled = False
+            self.page.update()
+
+    async def _assign_user_async(self, _: ft.ControlEvent | None = None) -> None:
+        if not self.selected_client_id:
+            self.notification.show("Select a client first", "warning")
+            return
+        email = (self.assign_user_email.value or "").strip()
+        if not email:
+            self.notification.show("User email is required", "warning")
+            return
+        try:
+            self.assign_btn.disabled = True
+            self.page.update()
+            await self.api_client.assign_user(self.selected_client_id, email)
+            self.assign_user_email.value = ""
+            await self._add_log(f"User assigned to client: {email}", "success")
+            self.notification.show("User assigned", "success")
+        except Exception as exc:
+            await self._add_log(f"Assignment failed: {exc}", "error")
+            self.notification.show("Failed to assign user", "error")
+        finally:
+            self.assign_btn.disabled = False
+            self.page.update()
+
+    async def _register_file_async(self, _: ft.ControlEvent | None = None) -> None:
+        if not self.selected_client_id:
+            self.notification.show("Select a client first", "warning")
+            return
+        display_name = (self.file_display_name.value or "").strip()
+        file_path = (self.file_path.value or "").strip()
+        sheet_name = (self.file_sheet.value or "").strip() or None
+        if not display_name or not file_path:
+            self.notification.show("File name and path are required", "warning")
+            return
+        mappings = []
+        if self.map_date.value:
+            mappings.append({"excel_column": self.map_date.value, "field_name": "date", "data_type": "date"})
+        if self.map_product.value:
+            mappings.append(
+                {"excel_column": self.map_product.value, "field_name": "product", "data_type": "text"}
+            )
+        if self.map_quantity.value:
+            mappings.append(
+                {"excel_column": self.map_quantity.value, "field_name": "quantity", "data_type": "number"}
+            )
+        if self.map_revenue.value:
+            mappings.append(
+                {"excel_column": self.map_revenue.value, "field_name": "revenue", "data_type": "number"}
+            )
+        if self.map_region.value:
+            mappings.append(
+                {"excel_column": self.map_region.value, "field_name": "region", "data_type": "text"}
+            )
+        if self.map_salesperson.value:
+            mappings.append(
+                {
+                    "excel_column": self.map_salesperson.value,
+                    "field_name": "salesperson",
+                    "data_type": "text",
+                }
+            )
+        if not mappings:
+            self.notification.show("At least one column mapping is required", "warning")
+            return
+        payload = {
+            "display_name": display_name,
+            "file_path": file_path,
+            "sheet_name": sheet_name,
+            "has_header": bool(self.file_has_header.value),
+            "mappings": mappings,
+        }
+        try:
+            self.file_register_btn.disabled = True
+            self.page.update()
+            await self.api_client.register_file(self.selected_client_id, payload)
+            self.file_display_name.value = ""
+            self.file_path.value = ""
+            self.file_sheet.value = ""
+            await self._add_log(f"File registered: {display_name}", "success")
+            self.notification.show("File registered", "success")
+            await self._load_files_async()
+            await self._refresh_dashboard_async()
+        except Exception as exc:
+            await self._add_log(f"File registration failed: {exc}", "error")
+            self.notification.show("Failed to register file", "error")
+        finally:
+            self.file_register_btn.disabled = False
+            self.page.update()
+
+    async def _create_report_async(self, _: ft.ControlEvent | None = None) -> None:
+        if not self.selected_client_id:
+            self.notification.show("Select a client first", "warning")
+            return
+        if not self.report_file_dropdown.value:
+            self.notification.show("Select a data source", "warning")
+            return
+        name = (self.report_name.value or "").strip()
+        if not name:
+            self.notification.show("Report name is required", "warning")
+            return
+        try:
+            days = int(self.report_days.value or "7")
+        except ValueError:
+            self.notification.show("Last N days must be a number", "warning")
+            return
+
+        metric_value = self.report_metric.value or "revenue_sum"
+        field, agg = metric_value.split("_", 1)
+        payload = {
+            "client_id": self.selected_client_id,
+            "file_id": int(self.report_file_dropdown.value),
+            "name": name,
+            "date_range_days": days,
+            "group_by": self.report_group_by.value,
+            "metrics": [{"field": field, "agg": agg}],
+            "chart_type": "bar",
+            "filters": {},
+        }
+        try:
+            self.report_create_btn.disabled = True
+            self.page.update()
+            await self.api_client.create_report(payload)
+            self.report_name.value = ""
+            await self._add_log(f"Report created: {name}", "success")
+            self.notification.show("Report created", "success")
+            await self._load_reports_async()
+        except Exception as exc:
+            await self._add_log(f"Report creation failed: {exc}", "error")
+            self.notification.show("Failed to create report", "error")
+        finally:
+            self.report_create_btn.disabled = False
+            self.page.update()
+
+    async def _run_report_async(self, _: ft.ControlEvent | None = None) -> None:
+        if not self.report_select.value:
+            return
+        report_id = int(self.report_select.value)
+        try:
+            self.report_run_btn.disabled = True
+            self.page.update()
+            result = await self.api_client.run_report(report_id)
+            self.report_results_list.controls = []
+            for row in result.get("rows", []):
+                label = row.get("group", "-")
+                metrics = [
+                    f"{key}: {value}" for key, value in row.items() if key != "group"
+                ]
+                metrics_text = ", ".join(metrics) if metrics else "-"
+                self.report_results_list.controls.append(
+                    ft.Row(
+                        [
+                            ft.Text(label, color=Theme.TEXT_PRIMARY, size=12),
+                            ft.Container(expand=True),
+                            ft.Text(metrics_text, color=Theme.TEXT_SECONDARY, size=11),
+                        ],
+                        spacing=10,
+                    )
+                )
+            self.page.update()
+        except Exception as exc:
+            await self._add_log(f"Report run failed: {exc}", "error")
+            self.notification.show("Failed to run report", "error")
+        finally:
+            self.report_run_btn.disabled = False
+            self.page.update()
+
     async def _login_async(self, _: ft.ControlEvent | None = None) -> None:
         email = self.login_email.value.strip()
         password = self.login_password.value
@@ -541,7 +1238,13 @@ class CRMAnalyticsUI:
             is_admin = user.get("role") == "admin"
             self.admin_section.visible = is_admin
             self.create_btn.disabled = not is_admin
+            self.client_create_btn.disabled = not is_admin
+            self.assign_btn.disabled = not is_admin
+            self.file_register_btn.disabled = not is_admin
             self.logs_card.visible = is_admin
+            self.report_create_btn.disabled = True
+            self.report_run_btn.disabled = True
+            self.refresh_dashboard_btn.disabled = True
 
             self.logout_btn.disabled = False
             self.login_email.disabled = True
@@ -554,6 +1257,8 @@ class CRMAnalyticsUI:
 
             await self._add_log(f"Login successful as {user.get('name')}", "success")
             self.notification.show(f"Welcome back, {user.get('name')}!", "success")
+
+            await self._load_clients_async()
 
             token = self.api_client.token
             if token:
@@ -598,7 +1303,31 @@ class CRMAnalyticsUI:
 
         self.admin_section.visible = False
         self.create_btn.disabled = True
+        self.client_create_btn.disabled = True
+        self.assign_btn.disabled = True
+        self.file_register_btn.disabled = True
         self.logs_card.visible = False
+        self.refresh_dashboard_btn.disabled = True
+        self.report_create_btn.disabled = True
+        self.report_run_btn.disabled = True
+
+        self.clients = []
+        self.files = []
+        self.reports = []
+        self.selected_client_id = None
+        self.client_dropdown.options = []
+        self.client_dropdown.value = None
+        self.report_file_dropdown.options = []
+        self.report_file_dropdown.value = None
+        self.report_select.options = []
+        self.report_select.value = None
+        self.report_results_list.controls = []
+        self.data_sources_list.controls = []
+        self.revenue_by_product_list.controls = []
+        self.revenue_by_date_list.controls = []
+        self.total_revenue_value.value = "-"
+        self.total_transactions_value.value = "-"
+        self.revenue_today_value.value = "-"
 
         self.login_layer.visible = True
         self.app_layer.visible = False

@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     cors_origins: str = Field(default="*")
     bootstrap_admin_email: str | None = None
     bootstrap_admin_password: str | None = None
+    data_root: str = Field(default="./data/network_share")
+    excel_cache_ttl_seconds: int = Field(default=300)
 
 
 _settings: Settings | None = None

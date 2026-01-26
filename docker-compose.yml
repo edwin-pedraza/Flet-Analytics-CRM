@@ -24,11 +24,15 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/crm
+      DATA_ROOT: /data/crm_data
+      GENERATE_SAMPLE_DATA: "1"
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8000:8000"
+    volumes:
+      - ./data/network_share:/data/crm_data
     healthcheck:
       test:
         [

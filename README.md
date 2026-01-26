@@ -76,6 +76,34 @@ Allowed by default:
 - `backend/` FastAPI server
 - `app/` Flet UI
 - `docker-compose.yml` LAN stack
+- `data/network_share/` Sample Excel files (local network share simulation)
+
+## Live Excel Data Root
+The API reads Excel files from `DATA_ROOT`. Default is `./data/network_share`.
+
+To point to a real network share, set for example:
+```
+DATA_ROOT=//network/crm_data
+```
+
+## Sample Data
+This repo includes sample Excel files under `data/network_share/clients/`.
+You can register them in the Admin panel using paths like:
+```
+clients/acme_corporation/sales_2026.xlsx
+```
+
+To regenerate sample files:
+```
+python scripts/generate_sample_data.py
+```
+
+## Docker Compose Notes
+`docker compose up --build` will seed sample Excel files into the mounted data folder.
+To disable auto-seeding, set:
+```
+GENERATE_SAMPLE_DATA=0
+```
 
 ---
 

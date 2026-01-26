@@ -27,6 +27,7 @@ class ApiClient:
         if not self._token:
             return {}
         return {"Authorization": f"Bearer {self._token}"}
+
     async def login(self, email: str, password: str) -> dict:
         response = await self._client.post(
             f"{self.base_url}/auth/login",
@@ -41,6 +42,101 @@ class ApiClient:
         response = await self._client.post(
             f"{self.base_url}/users",
             json={"email": email, "name": name, "password": password, "role": role},
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def list_my_clients(self) -> list[dict]:
+        response = await self._client.get(
+            f"{self.base_url}/clients/mine",
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def list_clients(self) -> list[dict]:
+        response = await self._client.get(
+            f"{self.base_url}/clients",
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def create_client(self, name: str, code: str, description: str | None) -> dict:
+        response = await self._client.post(
+            f"{self.base_url}/clients",
+            json={"name": name, "code": code, "description": description},
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def assign_user(self, client_id: int, user_email: str) -> dict:
+        response = await self._client.post(
+            f"{self.base_url}/clients/{client_id}/assign",
+            json={"user_email": user_email},
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def list_files(self, client_id: int) -> list[dict]:
+        response = await self._client.get(
+            f"{self.base_url}/clients/{client_id}/files",
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def register_file(self, client_id: int, payload: dict) -> dict:
+        response = await self._client.post(
+            f"{self.base_url}/clients/{client_id}/files",
+            json=payload,
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def preview_file(self, file_id: int, limit: int = 25) -> dict:
+        response = await self._client.get(
+            f"{self.base_url}/files/{file_id}/preview",
+            params={"limit": limit},
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def get_dashboard(self, client_id: int) -> dict:
+        response = await self._client.get(
+            f"{self.base_url}/clients/{client_id}/dashboard",
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def create_report(self, payload: dict) -> dict:
+        response = await self._client.post(
+            f"{self.base_url}/reports",
+            json=payload,
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def list_reports(self, client_id: int | None = None) -> list[dict]:
+        params = {"client_id": client_id} if client_id is not None else None
+        response = await self._client.get(
+            f"{self.base_url}/reports",
+            params=params,
+            headers=self._auth_headers(),
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def run_report(self, report_id: int) -> dict:
+        response = await self._client.get(
+            f"{self.base_url}/reports/{report_id}/run",
             headers=self._auth_headers(),
         )
         response.raise_for_status()
