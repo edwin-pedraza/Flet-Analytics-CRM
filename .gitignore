@@ -8,3 +8,12 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Editor/agent artifacts
+.claude/
+CLAUDE.md
+IMPROVEMENTS_SUMMARY.md
+nul
+
+# Office temp files
+~$*.xlsx
