@@ -136,19 +136,24 @@ class ExcelCache:
         self._lock = asyncio.Lock()
 
     async def get_rows(
-        self, path: Path, sheet_name: str | None, has_header: bool
+        self,
+        path: Path,
+        sheet_name: str | None,
+        has_header: bool,
+        force: bool = False,
     ) -> ExcelCacheEntry:
         key = f"{path}::{sheet_name or ''}::{has_header}"
-        async with self._lock:
-            entry = self._cache.get(key)
-            if entry:
-                try:
-                    mtime = os.path.getmtime(path)
-                except FileNotFoundError:
-                    self._cache.pop(key, None)
-                else:
-                    if mtime == entry.mtime and (time.time() - entry.cached_at) < self._ttl_seconds:
-                        return entry
+        if not force:
+            async with self._lock:
+                entry = self._cache.get(key)
+                if entry:
+                    try:
+                        mtime = os.path.getmtime(path)
+                    except FileNotFoundError:
+                        self._cache.pop(key, None)
+                    else:
+                        if mtime == entry.mtime and (time.time() - entry.cached_at) < self._ttl_seconds:
+                            return entry
         entry = await asyncio.to_thread(_read_excel_rows, path, sheet_name, has_header)
         async with self._lock:
             self._cache[key] = entry

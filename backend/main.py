@@ -172,6 +172,7 @@ async def lan_only_middleware(request, call_next):
 async def startup() -> None:
     await init_db()
     await bootstrap_admin()
+    await bootstrap_sample_clients()
 
 
 async def bootstrap_admin() -> None:
@@ -189,6 +190,18 @@ async def bootstrap_admin() -> None:
         )
         session.add(admin)
         await session.commit()
+
+
+async def bootstrap_sample_clients() -> None:
+    """Create sample client and Excel file records that match the generated data."""
+    import os
+    if os.getenv("GENERATE_SAMPLE_DATA", "1") != "1":
+        return
+
+    from backend.sample_data import seed_sample_data
+
+    async with SessionLocal() as session:
+        await seed_sample_data(session)
 
 
 @app.get("/health")
@@ -467,6 +480,7 @@ async def preview_file(
 async def dashboard_summary(
     client: Client = Depends(require_client_access),
     session: AsyncSession = Depends(get_session),
+    force: bool = Query(default=False),
 ) -> DashboardSummary:
     result = await session.execute(
         select(ExcelFile).where(ExcelFile.client_id == client.id)
@@ -490,7 +504,9 @@ async def dashboard_summary(
         path = resolve_data_path(file_row.file_path)
         if not path.exists():
             continue
-        entry = await excel_cache.get_rows(path, file_row.sheet_name, file_row.has_header)
+        entry = await excel_cache.get_rows(
+            path, file_row.sheet_name, file_row.has_header, force=force
+        )
         normalized = map_rows(entry.rows, entry.columns, mapping_payload)
         row_count = len(entry.rows)
         total_transactions += row_count

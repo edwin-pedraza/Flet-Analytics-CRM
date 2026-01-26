@@ -16,23 +16,59 @@ class UIState(Enum):
     DISCONNECTED = "disconnected"
 
 
+class Section(Enum):
+    DASHBOARD = "dashboard"
+    ADMIN = "admin"
+
+
 @dataclass
 class Theme:
-    PRIMARY = "#1E3A8A"
-    PRIMARY_HOVER = "#1E40AF"
-    SECONDARY = "#0F172A"
-    SURFACE = "#EB0F172A"
-    BORDER = "#2E93C5FD"
-    FIELD_BG = "#26166D1F"
-    FIELD_BORDER = "#4DCBD5F5"
-    TEXT_PRIMARY = "#E2E8F0"
-    TEXT_SECONDARY = "#94A3B8"
-    TEXT_MUTED = "#BFE2E8F0"
-    SUCCESS = "#10B981"
-    WARNING = "#F59E0B"
-    ERROR = "#EF4444"
+    # Primary Colors - Modern Blue Palette
+    PRIMARY = "#2563EB"          # Bright modern blue
+    PRIMARY_HOVER = "#1D4ED8"    # Deeper blue on hover
+    PRIMARY_LIGHT = "#60A5FA"    # Light blue accent
 
-    BACKGROUND = ["#315DB6", "#061F5C", "#0032C9"]
+    # Secondary Colors
+    SECONDARY = "#0F172A"        # Deep slate
+    SECONDARY_LIGHT = "#1E293B"  # Lighter slate
+
+    # Surface Colors
+    SURFACE = "#1E293B"          # Card background
+    SURFACE_LIGHT = "#334155"    # Lighter surface
+    SURFACE_HOVER = "#475569"    # Hover state
+
+    # Border Colors
+    BORDER = "#334155"           # Subtle border
+    BORDER_LIGHT = "#475569"     # Lighter border
+
+    # Field Colors
+    FIELD_BG = "#0F172A"         # Dark field background
+    FIELD_BORDER = "#334155"     # Field border
+    FIELD_FOCUS = "#2563EB"      # Focus state
+
+    # Text Colors
+    TEXT_PRIMARY = "#F1F5F9"     # Bright white text
+    TEXT_SECONDARY = "#94A3B8"   # Muted text
+    TEXT_MUTED = "#64748B"       # Very muted text
+
+    # Status Colors
+    SUCCESS = "#10B981"          # Green
+    SUCCESS_BG = "#064E3B"       # Dark green background
+    WARNING = "#F59E0B"          # Orange
+    WARNING_BG = "#78350F"       # Dark orange background
+    ERROR = "#EF4444"            # Red
+    ERROR_BG = "#7F1D1D"         # Dark red background
+    INFO = "#3B82F6"             # Blue
+    INFO_BG = "#1E3A8A"          # Dark blue background
+
+    # Gradient Background
+    BACKGROUND = ["#0F172A", "#1E293B", "#334155"]
+
+    # Accent Colors
+    ACCENT_PURPLE = "#8B5CF6"
+    ACCENT_CYAN = "#06B6D4"
+    ACCENT_PINK = "#EC4899"
+    ACCENT_EMERALD = "#10B981"
 
 
 class NotificationManager:
@@ -47,7 +83,7 @@ class NotificationManager:
 
     def show(self, message: str, severity: str = "info") -> None:
         colors = {
-            "info": "#3B82F6",
+            "info": Theme.INFO,
             "success": Theme.SUCCESS,
             "warning": Theme.WARNING,
             "error": Theme.ERROR,
@@ -123,9 +159,11 @@ class UIComponents:
             filled=True,
             bgcolor=Theme.FIELD_BG,
             border_color=Theme.FIELD_BORDER,
-            focused_border_color="#7DD3FC",
-            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
-            text_style=ft.TextStyle(color=Theme.TEXT_PRIMARY),
+            focused_border_color=Theme.FIELD_FOCUS,
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY, size=13),
+            text_style=ft.TextStyle(color=Theme.TEXT_PRIMARY, size=14),
+            cursor_color=Theme.PRIMARY,
+            content_padding=ft.padding.symmetric(horizontal=16, vertical=14),
             **kwargs,
         )
 
@@ -136,19 +174,21 @@ class UIComponents:
         primary: bool = True,
         width: int = 360,
         disabled: bool = False,
+        icon: str = None,
         **kwargs,
     ) -> ft.ElevatedButton:
         return ft.ElevatedButton(
             text,
+            icon=icon,
             on_click=on_click,
             disabled=disabled,
+            bgcolor=Theme.PRIMARY if primary else Theme.SECONDARY_LIGHT,
+            color="#FFFFFF",
+            width=width,
+            height=48,
             style=ft.ButtonStyle(
-                bgcolor=Theme.PRIMARY if primary else Theme.SECONDARY,
-                color="#FFFFFF",
-                padding=ft.padding.symmetric(18, 20),
                 shape=ft.RoundedRectangleBorder(radius=12),
             ),
-            width=width,
             **kwargs,
         )
 
@@ -162,21 +202,30 @@ class UIComponents:
         return ft.Container(
             content=ft.Column(
                 [
-                    ft.Text(title, size=16, weight=ft.FontWeight.BOLD, color=Theme.TEXT_PRIMARY),
+                    ft.Container(
+                        content=ft.Text(
+                            title,
+                            size=18,
+                            weight=ft.FontWeight.BOLD,
+                            color=Theme.TEXT_PRIMARY,
+                        ),
+                        padding=ft.padding.only(bottom=12),
+                        border=ft.border.only(bottom=ft.BorderSide(1, Theme.BORDER)),
+                    ),
                     content,
                 ],
-                spacing=10,
+                spacing=16,
                 expand=True,
             ),
-            padding=20,
+            padding=24,
             border_radius=16,
             bgcolor=Theme.SURFACE,
             border=ft.border.all(1, Theme.BORDER),
             shadow=[
                 ft.BoxShadow(
-                    blur_radius=30,
-                    color="#330B1220",
-                    offset=ft.Offset(0, 12),
+                    blur_radius=24,
+                    color="#00000030",
+                    offset=ft.Offset(0, 8),
                 )
             ],
             height=min_height,
@@ -184,20 +233,41 @@ class UIComponents:
         )
 
     @staticmethod
-    def create_kpi_card(title: str, value_text: ft.Text) -> ft.Container:
+    def create_kpi_card(title: str, value_text: ft.Text, icon: str = None, accent_color: str = None) -> ft.Container:
+        """Create an enhanced KPI card with accent color"""
+        if accent_color is None:
+            accent_color = Theme.PRIMARY
+
+        card_content = [
+            ft.Text(
+                title,
+                size=14,
+                color=Theme.TEXT_SECONDARY,
+                weight=ft.FontWeight.W_500,
+            ),
+            ft.Container(height=12),
+            value_text,
+        ]
+
         return ft.Container(
             content=ft.Column(
-                [
-                    ft.Text(title, size=12, color=Theme.TEXT_SECONDARY),
-                    value_text,
-                ],
-                spacing=6,
+                card_content,
+                spacing=0,
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.START,
             ),
-            padding=16,
-            border_radius=14,
-            bgcolor="#1B1030",
-            border=ft.border.all(1, Theme.BORDER),
-            width=200,
+            padding=ft.padding.all(24),
+            border_radius=16,
+            bgcolor=Theme.SURFACE,
+            border=ft.border.all(2, accent_color),
+            expand=True,
+            shadow=[
+                ft.BoxShadow(
+                    blur_radius=20,
+                    color="#00000020",
+                    offset=ft.Offset(0, 4),
+                )
+            ],
         )
 
 
@@ -212,6 +282,7 @@ class CRMAnalyticsUI:
 
         self.current_state = UIState.IDLE
         self.current_user = None
+        self.current_section = Section.DASHBOARD
         self.clients: list[dict] = []
         self.files: list[dict] = []
         self.reports: list[dict] = []
@@ -254,64 +325,103 @@ class CRMAnalyticsUI:
             password=True,
         )
         self.login_btn = UIComponents.create_button(
-            "Login",
+            "Sign In",
             on_click=lambda e: self.page.run_task(self._login_async, e),
         )
         self.logout_btn = UIComponents.create_button(
-            "Logout",
+            "Sign Out",
             on_click=lambda e: self.page.run_task(self._logout_async, e),
             primary=False,
-            width=120,
+            width=140,
             disabled=True,
         )
 
         self.client_dropdown = ft.Dropdown(
-            label="Client",
+            label="Select Client",
             options=[],
             value=None,
-            width=260,
+            width=200,
             border_color=Theme.FIELD_BORDER,
-            focused_border_color="#7DD3FC",
-            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+            focused_border_color=Theme.FIELD_FOCUS,
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY, size=12),
+            text_style=ft.TextStyle(color=Theme.TEXT_PRIMARY, size=13),
+            bgcolor=Theme.FIELD_BG,
+            border_radius=10,
+            content_padding=ft.padding.symmetric(horizontal=12, vertical=10),
         )
-        self.client_dropdown.on_change = lambda e: self.page.run_task(
-            self._on_client_change_async, e
-        )
+        self.client_dropdown.on_change = self._handle_client_change
         self.refresh_dashboard_btn = UIComponents.create_button(
-            "Refresh",
-            on_click=lambda e: self.page.run_task(self._refresh_dashboard_async, e),
-            primary=False,
-            width=120,
+            "Refresh Data",
+            on_click=lambda e: self.page.run_task(self._refresh_dashboard_async, e, True),
+            primary=True,
+            width=200,
             disabled=True,
+        )
+
+        # Selected client display
+        self.selected_client_name = ft.Text(
+            "Select a client",
+            size=14,
+            weight=ft.FontWeight.W_600,
+            color=Theme.TEXT_PRIMARY,
+        )
+
+        # Dashboard title (will show client name)
+        self.dashboard_title = ft.Text(
+            "Dashboard",
+            size=24,
+            weight=ft.FontWeight.BOLD,
+            color=Theme.TEXT_PRIMARY,
         )
 
         self.total_revenue_value = ft.Text(
             "-",
-            size=22,
+            size=28,
             weight=ft.FontWeight.BOLD,
-            color=Theme.TEXT_PRIMARY,
+            color=Theme.ACCENT_EMERALD,
         )
         self.total_transactions_value = ft.Text(
             "-",
-            size=22,
+            size=28,
             weight=ft.FontWeight.BOLD,
-            color=Theme.TEXT_PRIMARY,
+            color=Theme.ACCENT_CYAN,
         )
         self.revenue_today_value = ft.Text(
             "-",
-            size=22,
+            size=28,
             weight=ft.FontWeight.BOLD,
-            color=Theme.TEXT_PRIMARY,
+            color=Theme.ACCENT_PURPLE,
         )
 
-        self.metrics_row = ft.Row(
+        self.metrics_row = ft.ResponsiveRow(
             [
-                UIComponents.create_kpi_card("Total Revenue", self.total_revenue_value),
-                UIComponents.create_kpi_card("Transactions", self.total_transactions_value),
-                UIComponents.create_kpi_card("Revenue Today", self.revenue_today_value),
+                ft.Container(
+                    content=UIComponents.create_kpi_card(
+                        "Total Revenue",
+                        self.total_revenue_value,
+                        accent_color=Theme.ACCENT_EMERALD,
+                    ),
+                    col={"sm": 12, "md": 4, "lg": 4},
+                ),
+                ft.Container(
+                    content=UIComponents.create_kpi_card(
+                        "Transactions",
+                        self.total_transactions_value,
+                        accent_color=Theme.ACCENT_CYAN,
+                    ),
+                    col={"sm": 12, "md": 4, "lg": 4},
+                ),
+                ft.Container(
+                    content=UIComponents.create_kpi_card(
+                        "Revenue Today",
+                        self.revenue_today_value,
+                        accent_color=Theme.ACCENT_PURPLE,
+                    ),
+                    col={"sm": 12, "md": 4, "lg": 4},
+                ),
             ],
-            spacing=12,
-            wrap=True,
+            spacing=16,
+            run_spacing=16,
         )
         self.data_sources_list = ft.ListView(expand=True, spacing=6)
         self.revenue_by_product_list = ft.ListView(expand=True, spacing=6)
@@ -320,7 +430,8 @@ class CRMAnalyticsUI:
         self.metrics_card = UIComponents.create_card(
             "Key Metrics",
             self.metrics_row,
-            min_height=160,
+            min_height=180,
+            expand=False,
         )
         self.sources_card = UIComponents.create_card(
             "Data Sources",
@@ -352,8 +463,11 @@ class CRMAnalyticsUI:
             value="product",
             width=160,
             border_color=Theme.FIELD_BORDER,
-            focused_border_color="#7DD3FC",
-            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+            focused_border_color=Theme.FIELD_FOCUS,
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY, size=13),
+            text_style=ft.TextStyle(color=Theme.TEXT_PRIMARY, size=14),
+            bgcolor=Theme.FIELD_BG,
+            border_radius=12,
         )
         self.report_metric = ft.Dropdown(
             label="Metric",
@@ -365,8 +479,11 @@ class CRMAnalyticsUI:
             value="revenue_sum",
             width=160,
             border_color=Theme.FIELD_BORDER,
-            focused_border_color="#7DD3FC",
-            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+            focused_border_color=Theme.FIELD_FOCUS,
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY, size=13),
+            text_style=ft.TextStyle(color=Theme.TEXT_PRIMARY, size=14),
+            bgcolor=Theme.FIELD_BG,
+            border_radius=12,
         )
         self.report_file_dropdown = ft.Dropdown(
             label="Data source",
@@ -374,8 +491,11 @@ class CRMAnalyticsUI:
             value=None,
             width=220,
             border_color=Theme.FIELD_BORDER,
-            focused_border_color="#7DD3FC",
-            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+            focused_border_color=Theme.FIELD_FOCUS,
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY, size=13),
+            text_style=ft.TextStyle(color=Theme.TEXT_PRIMARY, size=14),
+            bgcolor=Theme.FIELD_BG,
+            border_radius=12,
         )
         self.report_create_btn = UIComponents.create_button(
             "Create report",
@@ -390,8 +510,11 @@ class CRMAnalyticsUI:
             value=None,
             width=280,
             border_color=Theme.FIELD_BORDER,
-            focused_border_color="#7DD3FC",
-            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+            focused_border_color=Theme.FIELD_FOCUS,
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY, size=13),
+            text_style=ft.TextStyle(color=Theme.TEXT_PRIMARY, size=14),
+            bgcolor=Theme.FIELD_BG,
+            border_radius=12,
         )
         self.report_run_btn = UIComponents.create_button(
             "Run report",
@@ -455,8 +578,11 @@ class CRMAnalyticsUI:
             value="user",
             width=160,
             border_color=Theme.FIELD_BORDER,
-            focused_border_color="#7DD3FC",
-            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+            focused_border_color=Theme.FIELD_FOCUS,
+            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY, size=13),
+            text_style=ft.TextStyle(color=Theme.TEXT_PRIMARY, size=14),
+            bgcolor=Theme.FIELD_BG,
+            border_radius=12,
         )
         self.create_btn = UIComponents.create_button(
             "Create user",
@@ -513,7 +639,9 @@ class CRMAnalyticsUI:
         self.file_has_header = ft.Checkbox(
             label="Has header row",
             value=True,
-            label_style=ft.TextStyle(color=Theme.TEXT_SECONDARY),
+            label_style=ft.TextStyle(color=Theme.TEXT_PRIMARY, size=13),
+            check_color=Theme.PRIMARY,
+            active_color=Theme.PRIMARY,
         )
         self.map_date = UIComponents.create_text_field("Date column", width=140)
         self.map_product = UIComponents.create_text_field("Product column", width=140)
@@ -535,92 +663,6 @@ class CRMAnalyticsUI:
             disabled=True,
         )
 
-        self.admin_section = ft.Container(
-            content=ft.Column(
-                [
-                    UIComponents.create_card(
-                        "Create User",
-                        ft.Row(
-                            [
-                                self.create_email,
-                                self.create_name,
-                                self.create_password,
-                                self.create_role,
-                                self.create_btn,
-                            ],
-                            spacing=10,
-                            wrap=True,
-                        ),
-                        min_height=160,
-                    ),
-                    UIComponents.create_card(
-                        "Create Client",
-                        ft.Row(
-                            [
-                                self.client_name,
-                                self.client_code,
-                                self.client_description,
-                                self.client_create_btn,
-                            ],
-                            spacing=10,
-                            wrap=True,
-                        ),
-                        min_height=160,
-                    ),
-                    UIComponents.create_card(
-                        "Assign User to Client",
-                        ft.Row(
-                            [
-                                self.assign_user_email,
-                                self.assign_btn,
-                            ],
-                            spacing=10,
-                            wrap=True,
-                        ),
-                        min_height=140,
-                    ),
-                    UIComponents.create_card(
-                        "Register Excel File",
-                        ft.Column(
-                            [
-                                ft.Row(
-                                    [
-                                        self.file_display_name,
-                                        self.file_path,
-                                        self.file_sheet,
-                                        self.file_has_header,
-                                        self.file_register_btn,
-                                    ],
-                                    spacing=10,
-                                    wrap=True,
-                                ),
-                                ft.Row(
-                                    [
-                                        self.map_date,
-                                        self.map_product,
-                                        self.map_quantity,
-                                        self.map_revenue,
-                                        self.map_region,
-                                        self.map_salesperson,
-                                    ],
-                                    spacing=10,
-                                    wrap=True,
-                                ),
-                            ],
-                            spacing=10,
-                        ),
-                        min_height=200,
-                    ),
-                ],
-                spacing=12,
-            ),
-            padding=20,
-            border_radius=16,
-            bgcolor=Theme.SURFACE,
-            border=ft.border.all(1, Theme.BORDER),
-            visible=False,
-        )
-
         self.logs_card = UIComponents.create_card("Activity Logs", self.log_view, min_height=280)
         self.logs_card.visible = False
 
@@ -630,60 +672,118 @@ class CRMAnalyticsUI:
             min_height=280,
         )
 
+    def _create_nav_item(self, icon: str, label: str, section: Section) -> ft.Container:
+        """Create a navigation item for the sidebar"""
+        is_active = self.current_section == section
+
+        return ft.Container(
+            content=ft.Row(
+                [
+                    ft.Text(icon, size=18),
+                    ft.Text(
+                        label,
+                        size=14,
+                        weight=ft.FontWeight.W_600 if is_active else ft.FontWeight.W_400,
+                        color=Theme.TEXT_PRIMARY if is_active else Theme.TEXT_SECONDARY,
+                    ),
+                ],
+                spacing=12,
+            ),
+            padding=ft.padding.symmetric(horizontal=16, vertical=12),
+            border_radius=10,
+            bgcolor=Theme.PRIMARY if is_active else "transparent",
+            on_click=lambda e, s=section: self.page.run_task(self._switch_section_async, s),
+            on_hover=lambda e: self._on_nav_hover(e, section),
+        )
+
+    def _on_nav_hover(self, e: ft.ControlEvent, section: Section) -> None:
+        """Handle hover effect on navigation items"""
+        if self.current_section != section:
+            e.control.bgcolor = Theme.SURFACE_HOVER if e.data == "true" else "transparent"
+            e.control.update()
+
+    async def _switch_section_async(self, section: Section) -> None:
+        """Switch to a different section"""
+        self.current_section = section
+        self._update_navigation()
+        self._update_content_visibility()
+        self.page.update()
+
+    def _update_navigation(self) -> None:
+        """Update navigation items to reflect current section"""
+        # Update Dashboard nav item
+        is_dashboard_active = self.current_section == Section.DASHBOARD
+        self.nav_dashboard.bgcolor = Theme.PRIMARY if is_dashboard_active else "transparent"
+        self.nav_dashboard.content.controls[1].weight = ft.FontWeight.W_600 if is_dashboard_active else ft.FontWeight.W_400
+        self.nav_dashboard.content.controls[1].color = Theme.TEXT_PRIMARY if is_dashboard_active else Theme.TEXT_SECONDARY
+
+        # Update Admin nav item
+        is_admin_active = self.current_section == Section.ADMIN
+        self.nav_admin.bgcolor = Theme.PRIMARY if is_admin_active else "transparent"
+        self.nav_admin.content.controls[1].weight = ft.FontWeight.W_600 if is_admin_active else ft.FontWeight.W_400
+        self.nav_admin.content.controls[1].color = Theme.TEXT_PRIMARY if is_admin_active else Theme.TEXT_SECONDARY
+
+    def _update_content_visibility(self) -> None:
+        """Show/hide content based on current section"""
+        self.dashboard_view.visible = self.current_section == Section.DASHBOARD
+        self.admin_view.visible = self.current_section == Section.ADMIN
+
     def _setup_layout(self) -> None:
         login_card = ft.Container(
             content=ft.Column(
                 [
                     ft.Container(
                         content=ft.Text(
-                            "CRM",
-                            size=20,
-                            weight=ft.FontWeight.BOLD,
-                            color=Theme.TEXT_PRIMARY,
+                            "📊",
+                            size=32,
                         ),
-                        width=56,
-                        height=56,
+                        width=72,
+                        height=72,
                         alignment=ft.Alignment(0, 0),
-                        border_radius=14,
-                        bgcolor="#401E3A8A",
-                        border=ft.border.all(2, Theme.BORDER),
+                        border_radius=20,
+                        bgcolor=f"{Theme.PRIMARY}20",
+                        border=ft.border.all(2, f"{Theme.PRIMARY}40"),
                     ),
                     ft.Text(
                         "CRM Analytics",
-                        size=12,
+                        size=14,
                         weight=ft.FontWeight.W_500,
                         color=Theme.TEXT_SECONDARY,
+                        text_align=ft.TextAlign.CENTER,
                     ),
                     ft.Text(
                         "Welcome Back",
-                        size=26,
+                        size=32,
                         weight=ft.FontWeight.BOLD,
                         font_family="Sora",
                         color=Theme.TEXT_PRIMARY,
+                        text_align=ft.TextAlign.CENTER,
                     ),
                     ft.Text(
-                        "Sign in to access your workspace.",
-                        size=13,
-                        color=Theme.TEXT_MUTED,
+                        "Sign in to access your analytics workspace",
+                        size=14,
+                        color=Theme.TEXT_SECONDARY,
+                        text_align=ft.TextAlign.CENTER,
                     ),
+                    ft.Container(height=8),
                     ft.Column(
                         [self.login_email, self.login_password, self.login_btn],
-                        spacing=14,
+                        spacing=16,
                     ),
                 ],
-                spacing=16,
+                spacing=20,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            padding=32,
+            padding=40,
             width=480,
             border_radius=24,
-            bgcolor="#E0111827",
+            bgcolor=Theme.SURFACE,
             border=ft.border.all(1, Theme.BORDER),
             shadow=[
                 ft.BoxShadow(
-                    blur_radius=50,
-                    color="#4D020617",
-                    offset=ft.Offset(0, 20),
+                    blur_radius=40,
+                    color="#00000040",
+                    offset=ft.Offset(0, 16),
                 )
             ],
         )
@@ -695,61 +795,325 @@ class CRMAnalyticsUI:
             visible=True,
         )
 
-        status_bar = ft.Container(
+        # Navigation items
+        self.nav_dashboard = ft.Container(
             content=ft.Row(
                 [
-                    self.status_text,
-                    self.user_text,
-                    ft.Container(expand=True),
-                    self.logout_btn,
-                ],
-                spacing=16,
-            ),
-            padding=ft.padding.only(bottom=8),
-        )
-
-        client_bar = ft.Container(
-            content=ft.Row(
-                [
-                    self.client_dropdown,
-                    self.refresh_dashboard_btn,
-                    ft.Container(expand=True),
+                    ft.Text("📊", size=18),
+                    ft.Text(
+                        "Dashboard",
+                        size=14,
+                        weight=ft.FontWeight.W_600,
+                        color=Theme.TEXT_PRIMARY,
+                    ),
                 ],
                 spacing=12,
             ),
-            padding=ft.padding.only(bottom=4),
+            padding=ft.padding.symmetric(horizontal=16, vertical=12),
+            border_radius=10,
+            bgcolor=Theme.PRIMARY,
+            on_click=lambda e: self.page.run_task(self._switch_section_async, Section.DASHBOARD),
+            on_hover=lambda e: self._on_nav_hover(e, Section.DASHBOARD),
         )
 
-        dashboard_section = ft.Column(
-            [
-                client_bar,
-                self.metrics_card,
-                ft.Row(
-                    [self.sources_card, self.products_card, self.dates_card],
-                    spacing=16,
-                    wrap=True,
-                ),
-            ],
-            spacing=16,
-        )
-
-        self.app_layer = ft.Container(
-            content=ft.Column(
+        self.nav_admin = ft.Container(
+            content=ft.Row(
                 [
-                    status_bar,
-                    dashboard_section,
-                    self.reports_card,
-                    self.admin_section,
-                    ft.Row(
-                        [self.users_card, self.logs_card],
-                        spacing=16,
-                        expand=True,
+                    ft.Text("⚙️", size=18),
+                    ft.Text(
+                        "Admin",
+                        size=14,
+                        weight=ft.FontWeight.W_400,
+                        color=Theme.TEXT_SECONDARY,
                     ),
                 ],
-                spacing=16,
+                spacing=12,
+            ),
+            padding=ft.padding.symmetric(horizontal=16, vertical=12),
+            border_radius=10,
+            bgcolor="transparent",
+            on_click=lambda e: self.page.run_task(self._switch_section_async, Section.ADMIN),
+            on_hover=lambda e: self._on_nav_hover(e, Section.ADMIN),
+            visible=False,  # Hidden by default, shown for admins
+        )
+
+        # Sidebar
+        sidebar = ft.Container(
+            content=ft.Column(
+                [
+                    # Client Selector at top
+                    ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Text(
+                                    "CLIENT",
+                                    size=11,
+                                    color=Theme.TEXT_MUTED,
+                                    weight=ft.FontWeight.W_600,
+                                ),
+                                ft.Container(height=8),
+                                ft.Container(
+                                    content=ft.Row(
+                                        [
+                                            ft.Container(
+                                                content=ft.Text("🏢", size=20),
+                                                width=36,
+                                                height=36,
+                                                alignment=ft.Alignment(0, 0),
+                                                border_radius=8,
+                                                bgcolor=f"{Theme.PRIMARY}30",
+                                            ),
+                                            self.selected_client_name,
+                                        ],
+                                        spacing=10,
+                                    ),
+                                    padding=ft.padding.symmetric(horizontal=12, vertical=10),
+                                    border_radius=10,
+                                    bgcolor=Theme.FIELD_BG,
+                                    border=ft.border.all(1, Theme.BORDER),
+                                ),
+                                ft.Container(height=8),
+                                self.client_dropdown,
+                                ft.Container(height=4),
+                                self.refresh_dashboard_btn,
+                            ],
+                            spacing=0,
+                        ),
+                        padding=ft.padding.only(bottom=20),
+                    ),
+                    ft.Divider(color=Theme.BORDER, height=1),
+                    ft.Container(height=16),
+                    # Navigation
+                    ft.Text(
+                        "MENU",
+                        size=11,
+                        color=Theme.TEXT_MUTED,
+                        weight=ft.FontWeight.W_600,
+                    ),
+                    ft.Container(height=8),
+                    self.nav_dashboard,
+                    self.nav_admin,
+                    ft.Container(expand=True),
+                    # User info at bottom
+                    ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Divider(color=Theme.BORDER, height=1),
+                                ft.Container(height=12),
+                                ft.Row(
+                                    [
+                                        ft.Text("●", color=Theme.SUCCESS, size=10),
+                                        self.status_text,
+                                    ],
+                                    spacing=6,
+                                ),
+                                ft.Row(
+                                    [
+                                        ft.Text("👤", size=12),
+                                        self.user_text,
+                                    ],
+                                    spacing=6,
+                                ),
+                                ft.Container(height=8),
+                                self.logout_btn,
+                            ],
+                            spacing=4,
+                        ),
+                    ),
+                ],
+                spacing=4,
+            ),
+            width=240,
+            padding=20,
+            bgcolor=Theme.SURFACE,
+            border=ft.border.only(right=ft.BorderSide(1, Theme.BORDER)),
+        )
+
+        # Dashboard View
+        self.dashboard_view = ft.Container(
+            content=ft.Column(
+                [
+                    self.dashboard_title,
+                    ft.Container(height=16),
+                    self.metrics_card,
+                    ft.ResponsiveRow(
+                        [
+                            ft.Container(
+                                content=self.sources_card,
+                                col={"sm": 12, "md": 4, "lg": 4},
+                            ),
+                            ft.Container(
+                                content=self.products_card,
+                                col={"sm": 12, "md": 4, "lg": 4},
+                            ),
+                            ft.Container(
+                                content=self.dates_card,
+                                col={"sm": 12, "md": 4, "lg": 4},
+                            ),
+                        ],
+                        spacing=16,
+                        run_spacing=16,
+                    ),
+                    self.reports_card,
+                    ft.ResponsiveRow(
+                        [
+                            ft.Container(
+                                content=self.users_card,
+                                col={"sm": 12, "md": 6, "lg": 6},
+                            ),
+                            ft.Container(
+                                content=self.logs_card,
+                                col={"sm": 12, "md": 6, "lg": 6},
+                            ),
+                        ],
+                        spacing=16,
+                        run_spacing=16,
+                    ),
+                ],
+                spacing=20,
                 scroll=ft.ScrollMode.AUTO,
             ),
-            padding=ft.padding.only(left=24, right=24, top=24, bottom=24),
+            expand=True,
+            visible=True,
+        )
+
+        # Admin View
+        self.admin_view = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text(
+                        "Admin Panel",
+                        size=24,
+                        weight=ft.FontWeight.BOLD,
+                        color=Theme.TEXT_PRIMARY,
+                    ),
+                    ft.Container(height=16),
+                    ft.ResponsiveRow(
+                        [
+                            ft.Container(
+                                content=UIComponents.create_card(
+                                    "Create User",
+                                    ft.Column(
+                                        [
+                                            ft.Row([self.create_email, self.create_name], spacing=12, wrap=True),
+                                            ft.Row([self.create_password, self.create_role], spacing=12, wrap=True),
+                                            self.create_btn,
+                                        ],
+                                        spacing=12,
+                                    ),
+                                    min_height=220,
+                                    expand=True,
+                                ),
+                                col={"sm": 12, "md": 6, "lg": 6},
+                            ),
+                            ft.Container(
+                                content=UIComponents.create_card(
+                                    "Create Client",
+                                    ft.Column(
+                                        [
+                                            self.client_name,
+                                            ft.Row([self.client_code, self.client_description], spacing=12, wrap=True),
+                                            self.client_create_btn,
+                                        ],
+                                        spacing=12,
+                                    ),
+                                    min_height=220,
+                                    expand=True,
+                                ),
+                                col={"sm": 12, "md": 6, "lg": 6},
+                            ),
+                        ],
+                        spacing=16,
+                        run_spacing=16,
+                    ),
+                    UIComponents.create_card(
+                        "Assign User to Client",
+                        ft.Row(
+                            [
+                                self.assign_user_email,
+                                self.assign_btn,
+                            ],
+                            spacing=12,
+                            wrap=True,
+                        ),
+                        min_height=140,
+                        expand=False,
+                    ),
+                    UIComponents.create_card(
+                        "Register Excel File",
+                        ft.Column(
+                            [
+                                ft.Row(
+                                    [
+                                        self.file_display_name,
+                                        self.file_path,
+                                        self.file_sheet,
+                                    ],
+                                    spacing=12,
+                                    wrap=True,
+                                ),
+                                ft.Row(
+                                    [
+                                        self.file_has_header,
+                                        ft.Container(expand=True),
+                                    ],
+                                ),
+                                ft.Text(
+                                    "Column Mappings",
+                                    size=14,
+                                    weight=ft.FontWeight.W_500,
+                                    color=Theme.TEXT_SECONDARY,
+                                ),
+                                ft.Row(
+                                    [
+                                        self.map_date,
+                                        self.map_product,
+                                        self.map_quantity,
+                                        self.map_revenue,
+                                        self.map_region,
+                                        self.map_salesperson,
+                                    ],
+                                    spacing=12,
+                                    wrap=True,
+                                ),
+                                self.file_register_btn,
+                            ],
+                            spacing=12,
+                        ),
+                        min_height=300,
+                        expand=False,
+                    ),
+                ],
+                spacing=20,
+                scroll=ft.ScrollMode.AUTO,
+            ),
+            expand=True,
+            visible=False,
+        )
+
+        # Main content area
+        main_content = ft.Container(
+            content=ft.Stack(
+                [
+                    self.dashboard_view,
+                    self.admin_view,
+                ],
+                expand=True,
+            ),
+            padding=ft.padding.all(28),
+            expand=True,
+        )
+
+        # App layer with sidebar
+        self.app_layer = ft.Container(
+            content=ft.Row(
+                [
+                    sidebar,
+                    main_content,
+                ],
+                spacing=0,
+                expand=True,
+            ),
             expand=True,
             visible=False,
         )
@@ -772,6 +1136,10 @@ class CRMAnalyticsUI:
         )
 
         self.page.add(root)
+
+    def _handle_client_change(self, e: ft.ControlEvent) -> None:
+        """Handle client dropdown change event"""
+        self.page.run_task(self._on_client_change_async, e)
 
     async def _add_log(self, message: str, level: str = "info") -> None:
         lower_message = message.lower()
@@ -811,36 +1179,55 @@ class CRMAnalyticsUI:
         self.page.update()
 
     async def _update_presence(self, users: list[dict]) -> None:
-        self.connected_count.value = f"Connected: {len(users)}"
-        icon_value = getattr(ft.icons, "PERSON", None)
-        if icon_value is None:
-            icon_value = getattr(ft.icons, "ACCOUNT_CIRCLE", None)
+        self.connected_count.value = f"Connected Users: {len(users)}"
+
         self.connected_list.controls = [
             ft.Container(
                 content=ft.Row(
                     [
-                        ft.Icon(icon_value, color=Theme.SUCCESS, size=16)
-                        if icon_value
-                        else ft.Text("•", color=Theme.SUCCESS, size=16),
-                        ft.Text(
-                            f"{user['name']} ({user['email']})",
-                            color=Theme.TEXT_PRIMARY,
-                            size=13,
+                        ft.Container(
+                            content=ft.Text("👤", size=16),
+                            width=36,
+                            height=36,
+                            bgcolor=f"{Theme.SUCCESS}20",
+                            border_radius=10,
+                            alignment=ft.Alignment(0, 0),
                         ),
+                        ft.Column(
+                            [
+                                ft.Text(
+                                    user['name'],
+                                    color=Theme.TEXT_PRIMARY,
+                                    size=13,
+                                    weight=ft.FontWeight.W_500,
+                                ),
+                                ft.Text(
+                                    user['email'],
+                                    color=Theme.TEXT_SECONDARY,
+                                    size=11,
+                                ),
+                            ],
+                            spacing=2,
+                        ),
+                        ft.Container(expand=True),
                         ft.Container(
                             content=ft.Text(
-                                f"x{user['connections']}",
+                                f"×{user['connections']}",
                                 color=Theme.TEXT_PRIMARY,
                                 size=11,
+                                weight=ft.FontWeight.BOLD,
                             ),
-                            bgcolor="#40059669",
-                            padding=ft.padding.symmetric(horizontal=8, vertical=2),
-                            border_radius=8,
+                            bgcolor=Theme.SECONDARY_LIGHT,
+                            padding=ft.padding.symmetric(horizontal=10, vertical=4),
+                            border_radius=10,
                         ),
                     ],
-                    spacing=8,
+                    spacing=12,
                 ),
-                padding=ft.padding.symmetric(vertical=4),
+                padding=ft.padding.symmetric(horizontal=12, vertical=10),
+                bgcolor=Theme.FIELD_BG,
+                border_radius=12,
+                border=ft.border.all(1, Theme.BORDER),
             )
             for user in users
         ]
@@ -871,15 +1258,21 @@ class CRMAnalyticsUI:
         ]
 
         if clients:
-            self.client_dropdown.value = str(clients[0]["id"])
-            self.selected_client_id = clients[0]["id"]
+            first_client = clients[0]
+            self.client_dropdown.value = str(first_client["id"])
+            self.selected_client_id = first_client["id"]
+            self.selected_client_name.value = first_client.get("name", "Unknown")
+            self.dashboard_title.value = f"Dashboard - {first_client.get('name', 'Unknown')}"
             self.refresh_dashboard_btn.disabled = False
+            self.page.update()
             await self._load_files_async()
             await self._load_reports_async()
-            await self._refresh_dashboard_async()
+            await self._refresh_dashboard_async(force=True)
         else:
             self.client_dropdown.value = None
             self.selected_client_id = None
+            self.selected_client_name.value = "No clients available"
+            self.dashboard_title.value = "Dashboard"
             self.refresh_dashboard_btn.disabled = True
             self.files = []
             self.reports = []
@@ -887,20 +1280,75 @@ class CRMAnalyticsUI:
             self.report_select.options = []
             self.report_create_btn.disabled = True
             self.report_run_btn.disabled = True
+            self.page.update()
+
+    async def _on_client_change_async(self, e: ft.ControlEvent | None = None) -> None:
+        # Always use the dropdown's current value (more reliable than e.data)
+        new_value = self.client_dropdown.value
+
+        if not new_value:
+            self.selected_client_id = None
+            self.refresh_dashboard_btn.disabled = True
+            self._clear_dashboard_data()
+            self.page.update()
+            return
+
+        try:
+            new_client_id = int(new_value)
+        except (ValueError, TypeError):
+            self.selected_client_id = None
+            self.refresh_dashboard_btn.disabled = True
+            self._clear_dashboard_data()
+            self.page.update()
+            return
+
+        # Only reload if client actually changed
+        if new_client_id == self.selected_client_id:
+            return
+
+        self.selected_client_id = new_client_id
+        self.refresh_dashboard_btn.disabled = True
         self.page.update()
 
-    async def _on_client_change_async(self, _: ft.ControlEvent | None = None) -> None:
-        if not self.client_dropdown.value:
-            self.selected_client_id = None
-            return
-        try:
-            self.selected_client_id = int(self.client_dropdown.value)
-        except ValueError:
-            self.selected_client_id = None
-            return
+        # Find client name for notification
+        client_name = "Unknown"
+        for c in self.clients:
+            if c.get("id") == new_client_id:
+                client_name = c.get("name", "Unknown")
+                break
+
+        # Update client name displays
+        self.selected_client_name.value = client_name
+        self.dashboard_title.value = f"Dashboard - {client_name}"
+        self.page.update()
+
+        await self._add_log(f"Switching to client: {client_name}", "info")
+
         await self._load_files_async()
         await self._load_reports_async()
-        await self._refresh_dashboard_async()
+        await self._refresh_dashboard_async(None, force=True)
+
+        self.notification.show(f"Loaded data for {client_name}", "success")
+
+    def _clear_dashboard_data(self) -> None:
+        """Clear all dashboard data when no client is selected"""
+        self.selected_client_name.value = "Select a client"
+        self.dashboard_title.value = "Dashboard"
+        self.total_revenue_value.value = "-"
+        self.total_transactions_value.value = "-"
+        self.revenue_today_value.value = "-"
+        self.data_sources_list.controls = []
+        self.revenue_by_product_list.controls = []
+        self.revenue_by_date_list.controls = []
+        self.files = []
+        self.reports = []
+        self.report_file_dropdown.options = []
+        self.report_file_dropdown.value = None
+        self.report_select.options = []
+        self.report_select.value = None
+        self.report_results_list.controls = []
+        self.report_create_btn.disabled = True
+        self.report_run_btn.disabled = True
 
     async def _load_files_async(self) -> None:
         if not self.selected_client_id:
@@ -946,17 +1394,30 @@ class CRMAnalyticsUI:
             self.report_run_btn.disabled = True
         self.page.update()
 
-    async def _refresh_dashboard_async(self, _: ft.ControlEvent | None = None) -> None:
+    async def _refresh_dashboard_async(
+        self, _: ft.ControlEvent | None = None, force: bool = False
+    ) -> None:
         if not self.selected_client_id:
+            self.notification.show("Please select a client first", "warning")
             return
+
+        # Disable refresh button while loading
+        self.refresh_dashboard_btn.disabled = True
+        self.page.update()
+
         try:
-            dashboard = await self.api_client.get_dashboard(self.selected_client_id)
+            dashboard = await self.api_client.get_dashboard(
+                self.selected_client_id, force=force
+            )
         except Exception as exc:
             await self._add_log(f"Failed to load dashboard: {exc}", "error")
             self.notification.show("Failed to load dashboard", "error")
+            self.refresh_dashboard_btn.disabled = False
+            self.page.update()
             return
 
-        total_revenue = float(dashboard.get("total_revenue") or 0)
+        try:
+            total_revenue = float(dashboard.get("total_revenue") or 0)
         revenue_today = float(dashboard.get("revenue_today") or 0)
         total_transactions = int(dashboard.get("total_transactions") or 0)
         self.total_revenue_value.value = f"${total_revenue:,.2f}"
@@ -966,68 +1427,160 @@ class CRMAnalyticsUI:
         self.data_sources_list.controls = []
         for source in dashboard.get("data_sources", []):
             self.data_sources_list.controls.append(
-                ft.Row(
-                    [
-                        ft.Text(
-                            source.get("display_name", "-"),
-                            color=Theme.TEXT_PRIMARY,
-                            size=12,
-                        ),
-                        ft.Container(expand=True),
-                        ft.Text(
-                            f"{source.get('row_count', 0)} rows",
-                            color=Theme.TEXT_SECONDARY,
-                            size=11,
-                        ),
-                    ],
-                    spacing=10,
+                ft.Container(
+                    content=ft.Row(
+                        [
+                            ft.Text("📊", size=16),
+                            ft.Text(
+                                source.get("display_name", "-"),
+                                color=Theme.TEXT_PRIMARY,
+                                size=13,
+                                weight=ft.FontWeight.W_500,
+                            ),
+                            ft.Container(expand=True),
+                            ft.Container(
+                                content=ft.Text(
+                                    f"{source.get('row_count', 0)} rows",
+                                    color=Theme.TEXT_PRIMARY,
+                                    size=11,
+                                    weight=ft.FontWeight.W_500,
+                                ),
+                                bgcolor=Theme.SECONDARY_LIGHT,
+                                padding=ft.padding.symmetric(horizontal=10, vertical=4),
+                                border_radius=8,
+                            ),
+                        ],
+                        spacing=12,
+                    ),
+                    padding=ft.padding.symmetric(horizontal=8, vertical=6),
+                    border_radius=8,
+                    bgcolor=Theme.FIELD_BG,
                 )
             )
 
         self.revenue_by_product_list.controls = []
-        for item in dashboard.get("revenue_by_product", []):
+        max_revenue = max([float(item.get("value") or 0) for item in dashboard.get("revenue_by_product", [])], default=1)
+        for idx, item in enumerate(dashboard.get("revenue_by_product", [])):
             value = float(item.get("value") or 0)
+            percentage = (value / max_revenue) * 100 if max_revenue > 0 else 0
+
+            # Color gradient based on position
+            bar_color = [Theme.ACCENT_EMERALD, Theme.ACCENT_CYAN, Theme.ACCENT_PURPLE][idx % 3]
+
             self.revenue_by_product_list.controls.append(
-                ft.Row(
-                    [
-                        ft.Text(item.get("label", "-"), color=Theme.TEXT_PRIMARY, size=12),
-                        ft.Container(expand=True),
-                        ft.Text(
-                            f"${value:,.2f}",
-                            color=Theme.TEXT_SECONDARY,
-                            size=11,
-                        ),
-                    ],
-                    spacing=10,
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Text(
+                                        item.get("label", "-"),
+                                        color=Theme.TEXT_PRIMARY,
+                                        size=13,
+                                        weight=ft.FontWeight.W_500,
+                                    ),
+                                    ft.Container(expand=True),
+                                    ft.Text(
+                                        f"${value:,.2f}",
+                                        color=bar_color,
+                                        size=13,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                ],
+                                spacing=10,
+                            ),
+                            ft.Container(
+                                content=ft.Container(
+                                    bgcolor=bar_color,
+                                    height=4,
+                                    border_radius=2,
+                                ),
+                                width=f"{percentage}%",
+                                bgcolor=Theme.FIELD_BG,
+                                height=4,
+                                border_radius=2,
+                            ),
+                        ],
+                        spacing=6,
+                    ),
+                    padding=ft.padding.symmetric(horizontal=8, vertical=8),
                 )
             )
 
         self.revenue_by_date_list.controls = []
-        for item in dashboard.get("revenue_by_date", [])[-10:]:
+        date_items = dashboard.get("revenue_by_date", [])[-10:]
+        max_date_revenue = max([float(item.get("value") or 0) for item in date_items], default=1)
+
+        for item in date_items:
             value = float(item.get("value") or 0)
+            percentage = (value / max_date_revenue) * 100 if max_date_revenue > 0 else 0
+
             self.revenue_by_date_list.controls.append(
-                ft.Row(
-                    [
-                        ft.Text(item.get("label", "-"), color=Theme.TEXT_PRIMARY, size=12),
-                        ft.Container(expand=True),
-                        ft.Text(
-                            f"${value:,.2f}",
-                            color=Theme.TEXT_SECONDARY,
-                            size=11,
-                        ),
-                    ],
-                    spacing=10,
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Text("📅", size=14),
+                                    ft.Text(
+                                        item.get("label", "-"),
+                                        color=Theme.TEXT_PRIMARY,
+                                        size=13,
+                                    ),
+                                    ft.Container(expand=True),
+                                    ft.Text(
+                                        f"${value:,.2f}",
+                                        color=Theme.ACCENT_EMERALD,
+                                        size=13,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                ],
+                                spacing=10,
+                            ),
+                            ft.Container(
+                                content=ft.Container(
+                                    bgcolor=Theme.ACCENT_PURPLE,
+                                    height=3,
+                                    border_radius=2,
+                                ),
+                                width=f"{percentage}%",
+                                bgcolor=Theme.FIELD_BG,
+                                height=3,
+                                border_radius=2,
+                            ),
+                        ],
+                        spacing=6,
+                    ),
+                    padding=ft.padding.symmetric(horizontal=8, vertical=6),
                 )
             )
-        self.page.update()
+        except Exception as exc:
+            await self._add_log(f"Error processing dashboard data: {exc}", "error")
+            self.notification.show("Error displaying dashboard data", "error")
+        finally:
+            # Always re-enable refresh button
+            self.refresh_dashboard_btn.disabled = False
+            self.page.update()
 
     async def _create_client_async(self, _: ft.ControlEvent | None = None) -> None:
         name = (self.client_name.value or "").strip()
         code = (self.client_code.value or "").strip()
         description = (self.client_description.value or "").strip() or None
 
+        # Validation
         if not name or not code:
             self.notification.show("Client name and code are required", "warning")
+            await self._add_log("Client creation failed: Missing fields", "warning")
+            return
+
+        if len(name) < 2:
+            self.notification.show("Client name must be at least 2 characters", "warning")
+            await self._add_log("Client creation failed: Name too short", "warning")
+            return
+
+        if len(code) < 2:
+            self.notification.show("Client code must be at least 2 characters", "warning")
+            await self._add_log("Client creation failed: Code too short", "warning")
             return
         try:
             self.client_create_btn.disabled = True
@@ -1048,11 +1601,19 @@ class CRMAnalyticsUI:
 
     async def _assign_user_async(self, _: ft.ControlEvent | None = None) -> None:
         if not self.selected_client_id:
-            self.notification.show("Select a client first", "warning")
+            self.notification.show("Please select a client first", "warning")
+            await self._add_log("User assignment failed: No client selected", "warning")
             return
+
         email = (self.assign_user_email.value or "").strip()
         if not email:
             self.notification.show("User email is required", "warning")
+            await self._add_log("User assignment failed: Missing email", "warning")
+            return
+
+        if "@" not in email:
+            self.notification.show("Please enter a valid email address", "warning")
+            await self._add_log("User assignment failed: Invalid email format", "warning")
             return
         try:
             self.assign_btn.disabled = True
@@ -1125,7 +1686,7 @@ class CRMAnalyticsUI:
             await self._add_log(f"File registered: {display_name}", "success")
             self.notification.show("File registered", "success")
             await self._load_files_async()
-            await self._refresh_dashboard_async()
+            await self._refresh_dashboard_async(force=True)
         except Exception as exc:
             await self._add_log(f"File registration failed: {exc}", "error")
             self.notification.show("Failed to register file", "error")
@@ -1186,20 +1747,42 @@ class CRMAnalyticsUI:
             self.page.update()
             result = await self.api_client.run_report(report_id)
             self.report_results_list.controls = []
-            for row in result.get("rows", []):
+            for idx, row in enumerate(result.get("rows", [])):
                 label = row.get("group", "-")
                 metrics = [
                     f"{key}: {value}" for key, value in row.items() if key != "group"
                 ]
                 metrics_text = ", ".join(metrics) if metrics else "-"
+
+                # Alternate background colors
+                bg_color = Theme.FIELD_BG if idx % 2 == 0 else Theme.SECONDARY_LIGHT
+
                 self.report_results_list.controls.append(
-                    ft.Row(
-                        [
-                            ft.Text(label, color=Theme.TEXT_PRIMARY, size=12),
-                            ft.Container(expand=True),
-                            ft.Text(metrics_text, color=Theme.TEXT_SECONDARY, size=11),
-                        ],
-                        spacing=10,
+                    ft.Container(
+                        content=ft.Row(
+                            [
+                                ft.Container(
+                                    content=ft.Text(
+                                        str(idx + 1),
+                                        color=Theme.TEXT_SECONDARY,
+                                        size=11,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
+                                    width=32,
+                                    height=32,
+                                    bgcolor=Theme.SECONDARY_LIGHT,
+                                    border_radius=8,
+                                    alignment=ft.Alignment(0, 0),
+                                ),
+                                ft.Text(label, color=Theme.TEXT_PRIMARY, size=13, weight=ft.FontWeight.W_500),
+                                ft.Container(expand=True),
+                                ft.Text(metrics_text, color=Theme.ACCENT_EMERALD, size=12, weight=ft.FontWeight.W_500),
+                            ],
+                            spacing=12,
+                        ),
+                        padding=ft.padding.symmetric(horizontal=12, vertical=10),
+                        bgcolor=bg_color,
+                        border_radius=8,
                     )
                 )
             self.page.update()
@@ -1211,12 +1794,24 @@ class CRMAnalyticsUI:
             self.page.update()
 
     async def _login_async(self, _: ft.ControlEvent | None = None) -> None:
-        email = self.login_email.value.strip()
-        password = self.login_password.value
+        email = self.login_email.value.strip() if self.login_email.value else ""
+        password = self.login_password.value if self.login_password.value else ""
 
+        # Validation
         if not email or not password:
             self.notification.show("Email and password are required", "warning")
             await self._add_log("Login failed: Missing credentials", "warning")
+            return
+
+        # Basic email format validation
+        if "@" not in email:
+            self.notification.show("Please enter a valid email address", "warning")
+            await self._add_log("Login failed: Invalid email format", "warning")
+            return
+
+        if len(password) < 6:
+            self.notification.show("Password must be at least 6 characters", "warning")
+            await self._add_log("Login failed: Password too short", "warning")
             return
 
         self.current_state = UIState.LOGGING_IN
@@ -1236,7 +1831,7 @@ class CRMAnalyticsUI:
             self.status_text.color = Theme.SUCCESS
 
             is_admin = user.get("role") == "admin"
-            self.admin_section.visible = is_admin
+            self.nav_admin.visible = is_admin
             self.create_btn.disabled = not is_admin
             self.client_create_btn.disabled = not is_admin
             self.assign_btn.disabled = not is_admin
@@ -1245,6 +1840,8 @@ class CRMAnalyticsUI:
             self.report_create_btn.disabled = True
             self.report_run_btn.disabled = True
             self.refresh_dashboard_btn.disabled = True
+            self.current_section = Section.DASHBOARD
+            self._update_content_visibility()
 
             self.logout_btn.disabled = False
             self.login_email.disabled = True
@@ -1301,7 +1898,7 @@ class CRMAnalyticsUI:
         self.status_text.color = Theme.TEXT_PRIMARY
         self.user_text.value = "User: -"
 
-        self.admin_section.visible = False
+        self.nav_admin.visible = False
         self.create_btn.disabled = True
         self.client_create_btn.disabled = True
         self.assign_btn.disabled = True
@@ -1310,11 +1907,16 @@ class CRMAnalyticsUI:
         self.refresh_dashboard_btn.disabled = True
         self.report_create_btn.disabled = True
         self.report_run_btn.disabled = True
+        self.current_section = Section.DASHBOARD
+        self._update_navigation()
+        self._update_content_visibility()
 
         self.clients = []
         self.files = []
         self.reports = []
         self.selected_client_id = None
+        self.selected_client_name.value = "Select a client"
+        self.dashboard_title.value = "Dashboard"
         self.client_dropdown.options = []
         self.client_dropdown.value = None
         self.report_file_dropdown.options = []
@@ -1337,14 +1939,30 @@ class CRMAnalyticsUI:
         self.page.update()
 
     async def _create_user_async(self, _: ft.ControlEvent | None = None) -> None:
-        email = self.create_email.value.strip()
-        name = self.create_name.value.strip()
-        password = self.create_password.value
+        email = self.create_email.value.strip() if self.create_email.value else ""
+        name = self.create_name.value.strip() if self.create_name.value else ""
+        password = self.create_password.value if self.create_password.value else ""
         role = self.create_role.value or "user"
 
+        # Validation
         if not email or not name or not password:
             self.notification.show("All fields are required", "warning")
             await self._add_log("User creation failed: Missing fields", "warning")
+            return
+
+        if "@" not in email:
+            self.notification.show("Please enter a valid email address", "warning")
+            await self._add_log("User creation failed: Invalid email format", "warning")
+            return
+
+        if len(name) < 2:
+            self.notification.show("Name must be at least 2 characters", "warning")
+            await self._add_log("User creation failed: Name too short", "warning")
+            return
+
+        if len(password) < 8:
+            self.notification.show("Password must be at least 8 characters", "warning")
+            await self._add_log("User creation failed: Password too short", "warning")
             return
 
         try:

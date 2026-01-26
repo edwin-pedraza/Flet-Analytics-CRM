@@ -107,9 +107,10 @@ class ApiClient:
         response.raise_for_status()
         return response.json()
 
-    async def get_dashboard(self, client_id: int) -> dict:
+    async def get_dashboard(self, client_id: int, force: bool = False) -> dict:
         response = await self._client.get(
             f"{self.base_url}/clients/{client_id}/dashboard",
+            params={"force": "1"} if force else None,
             headers=self._auth_headers(),
         )
         response.raise_for_status()

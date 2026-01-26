@@ -3,7 +3,7 @@ services:
     image: postgres:16
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: SecureP@ssw0rd2024!
       POSTGRES_DB: crm
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -23,7 +23,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/crm
+      DATABASE_URL: postgresql+asyncpg://postgres:SecureP%40ssw0rd2024%21@db:5432/crm
       DATA_ROOT: /data/crm_data
       GENERATE_SAMPLE_DATA: "1"
     depends_on:

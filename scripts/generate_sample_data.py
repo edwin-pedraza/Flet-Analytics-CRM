@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -59,16 +60,64 @@ def write_templates(root: Path) -> None:
         write_customers_file(customers_template)
 
 
+async def create_sample_clients() -> None:
+    """Create sample client and file records in the database."""
+    import sys
+    app_path = Path(__file__).resolve().parents[1]
+    if str(app_path) not in sys.path:
+        sys.path.insert(0, str(app_path))
+
+    try:
+        from backend.db import SessionLocal, init_db
+        from backend.sample_data import seed_sample_data
+    except ImportError as e:
+        print(f"Warning: Could not import database modules: {e}")
+        print("Skipping database sample seeding")
+        return
+
+    await init_db()
+
+    async with SessionLocal() as session:
+        await seed_sample_data(session)
+
+
 def main() -> None:
     root_env = os.getenv("DATA_ROOT")
     if root_env:
         root = Path(root_env)
     else:
         root = Path(__file__).resolve().parents[1] / "data" / "network_share"
-    write_sales_file(root / "clients" / "acme_corporation" / "sales_2026.xlsx")
-    write_customers_file(root / "clients" / "acme_corporation" / "customers.xlsx")
-    write_sales_file(root / "clients" / "beta_limited" / "sales_q1.xlsx")
+
+    print("Generating sample Excel files (only if they don't exist)...")
+
+    # Only create files if they don't exist - preserves user modifications
+    acme_sales = root / "clients" / "acme_corporation" / "sales_2026.xlsx"
+    if not acme_sales.exists():
+        write_sales_file(acme_sales)
+        print(f"  Created: {acme_sales}")
+    else:
+        print(f"  Skipped (exists): {acme_sales}")
+
+    acme_customers = root / "clients" / "acme_corporation" / "customers.xlsx"
+    if not acme_customers.exists():
+        write_customers_file(acme_customers)
+        print(f"  Created: {acme_customers}")
+    else:
+        print(f"  Skipped (exists): {acme_customers}")
+
+    beta_sales = root / "clients" / "beta_limited" / "sales_q1.xlsx"
+    if not beta_sales.exists():
+        write_sales_file(beta_sales)
+        print(f"  Created: {beta_sales}")
+    else:
+        print(f"  Skipped (exists): {beta_sales}")
+
     write_templates(root)
+    print("Excel files check completed")
+
+    print("\nCreating database records...")
+    asyncio.run(create_sample_clients())
+    print("Sample data generation completed!")
 
 
 if __name__ == "__main__":
